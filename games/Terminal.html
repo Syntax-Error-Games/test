@@ -1,0 +1,1558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Terminal BIOS</title>
+
+<style>
+* {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    margin: 0;
+    width: 100%;
+    min-height: 100%;
+    background: #000;
+}
+
+body {
+    color: #00ff66;
+    font-family: "Courier New", monospace;
+    font-size: 17px;
+    line-height: 1.35;
+    letter-spacing: .5px;
+    padding: 12px;
+    overflow-x: hidden;
+    text-shadow: 0 0 4px rgba(0,255,80,.65);
+}
+
+#terminal {
+    white-space: pre-wrap;
+    min-height: 100vh;
+}
+
+.line {
+    min-height: 23px;
+}
+
+.dim {
+    color: #008f3c;
+    text-shadow: none;
+}
+
+.bright {
+    color: #66ff99;
+}
+
+.warning {
+    color: #ffff00;
+    text-shadow: 0 0 4px rgba(255,255,0,.5);
+}
+
+.error {
+    color: #ff4444;
+    text-shadow: 0 0 4px rgba(255,0,0,.5);
+}
+
+.header {
+    color: #ffffff;
+    text-shadow: 0 0 5px rgba(255,255,255,.4);
+}
+
+.prompt-line {
+    display: flex;
+    align-items: center;
+    white-space: pre;
+}
+
+.prompt {
+    color: #00ff66;
+}
+
+input {
+    flex: 1;
+    min-width: 0;
+    background: transparent;
+    border: 0;
+    outline: 0;
+    padding: 0;
+    margin: 0;
+    color: #00ff66;
+    font-family: "Courier New", monospace;
+    font-size: 17px;
+    letter-spacing: .5px;
+    text-shadow: 0 0 4px rgba(0,255,80,.65);
+    caret-color: #00ff66;
+}
+
+#cursor {
+    display: inline-block;
+    width: 9px;
+    height: 18px;
+    background: #00ff66;
+    vertical-align: middle;
+    animation: cursorBlink 1s steps(1) infinite;
+}
+
+@keyframes cursorBlink {
+    0%, 49% {
+        opacity: 1;
+    }
+
+    50%, 100% {
+        opacity: 0;
+    }
+}
+
+/* CRT */
+body.crt::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 9999;
+    background:
+        repeating-linear-gradient(
+            to bottom,
+            rgba(255,255,255,.025) 0px,
+            rgba(255,255,255,.025) 1px,
+            transparent 1px,
+            transparent 3px
+        );
+}
+
+body.crt::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 9998;
+    box-shadow: inset 0 0 100px rgba(0,255,80,.06);
+}
+
+/* BIOS logo */
+.ascii-logo {
+    color: #66ff99;
+    margin-bottom: 12px;
+}
+
+/* Progress bar */
+.progress {
+    display: inline-block;
+    margin-left: 4px;
+}
+
+.boot-complete {
+    color: #66ff99;
+}
+
+/* Matrix */
+.matrix {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    opacity: .16;
+    pointer-events: none;
+}
+</style>
+</head>
+
+<body>
+
+<div id="terminal"></div>
+
+<script>
+"use strict";
+
+/* =========================================================
+   TERMINAL CORE
+========================================================= */
+
+const terminal = document.getElementById("terminal");
+
+let userName = "";
+let commandCount = 0;
+let aiActive = false;
+let terminalRunning = false;
+let currentInput = null;
+
+const STORAGE_USERS = "terminal_knownUsers";
+const STORAGE_AI = "terminal_aiData";
+const STORAGE_SETTINGS = "terminal_settings";
+
+let knownUsers = loadJSON(STORAGE_USERS, {});
+
+let aiData = loadJSON(STORAGE_AI, {
+    name: [
+        "NODE",
+        "ATLAS",
+        "NEXUS",
+        "ORBIT",
+        "CORE",
+        "UNIT-7",
+        "TERMINAL"
+    ][Math.floor(Math.random() * 7)],
+    knowledge: {}
+});
+
+let settings = loadJSON(STORAGE_SETTINGS, {
+    crt: false,
+    commandHistory: []
+});
+
+function loadJSON(key, fallback) {
+    try {
+        const data = localStorage.getItem(key);
+        return data ? JSON.parse(data) : fallback;
+    } catch {
+        return fallback;
+    }
+}
+
+function saveState() {
+    localStorage.setItem(STORAGE_USERS, JSON.stringify(knownUsers));
+    localStorage.setItem(STORAGE_AI, JSON.stringify(aiData));
+    localStorage.setItem(STORAGE_SETTINGS, JSON.stringify(settings));
+}
+
+
+/* =========================================================
+   OUTPUT
+========================================================= */
+
+function print(text = "", className = "") {
+    const div = document.createElement("div");
+
+    div.className = "line " + className;
+    div.textContent = text;
+
+    terminal.appendChild(div);
+
+    window.scrollTo({
+        top: document.body.scrollHeight,
+        behavior: "instant"
+    });
+
+    return div;
+}
+
+function printHTML(html, className = "") {
+    const div = document.createElement("div");
+
+    div.className = "line " + className;
+    div.innerHTML = html;
+
+    terminal.appendChild(div);
+
+    window.scrollTo({
+        top: document.body.scrollHeight,
+        behavior: "instant"
+    });
+
+    return div;
+}
+
+function clearTerminal() {
+    terminal.innerHTML = "";
+}
+
+
+/* =========================================================
+   DELAY
+   One controlled async delay system.
+   No recursive timers.
+========================================================= */
+
+function sleep(ms) {
+    return new Promise(resolve => {
+        setTimeout(resolve, ms);
+    });
+}
+
+
+/* =========================================================
+   BIOS
+========================================================= */
+
+const BIOS = {
+    version: "TERMINAL BIOS v2.7.14",
+    vendor: "TERMINAL SYSTEMS",
+    cpu: "x86-64 Compatible CPU",
+    memory: "16384 MB",
+    video: "VGA Compatible Graphics Adapter",
+    storage: "VIRTUAL NVMe STORAGE",
+    bootDevice: "NVMe0",
+    kernel: "TERMINAL-KERNEL 6.4.21"
+};
+
+async function bootSequence() {
+
+    terminalRunning = false;
+    currentInput = null;
+
+    clearTerminal();
+
+    print("TERMINAL SYSTEMS", "header");
+    print("Firmware Initialization Utility", "dim");
+    print("");
+
+    await sleep(180);
+
+    print(BIOS.version);
+    print("Copyright (C) Terminal Systems");
+    print("");
+
+    await sleep(180);
+
+    print("CPU........................ " + BIOS.cpu);
+    await sleep(120);
+
+    print("CPU CLOCK.................. 3.60 GHz");
+    await sleep(120);
+
+    print("CPU CORES.................. 8");
+    await sleep(120);
+
+    print("CPU FEATURES............... SSE SSE2 SSE3 SSSE3 AVX AVX2");
+    await sleep(120);
+
+    print("");
+
+    print("Performing POST...");
+    await sleep(180);
+
+    print("Checking system memory.....", "dim");
+    await sleep(250);
+
+    print("Memory test: 0 MB -> 4096 MB");
+    await sleep(100);
+
+    print("Memory test: 4096 MB -> 8192 MB");
+    await sleep(100);
+
+    print("Memory test: 8192 MB -> 12288 MB");
+    await sleep(100);
+
+    print("Memory test: 12288 MB -> 16384 MB");
+    await sleep(100);
+
+    print("Memory..................... " + BIOS.memory + " OK", "bright");
+
+    await sleep(160);
+
+    print("");
+    print("Detecting hardware...");
+
+    await sleep(140);
+    print("PCI BUS.................... OK");
+
+    await sleep(100);
+    print("USB CONTROLLER............. OK");
+
+    await sleep(100);
+    print("AUDIO DEVICE............... OK");
+
+    await sleep(100);
+    print("NETWORK CONTROLLER......... OK");
+
+    await sleep(100);
+    print("DISPLAY ADAPTER............ " + BIOS.video);
+
+    await sleep(150);
+
+    print("");
+    print("Initializing RTC........... OK");
+    await sleep(80);
+
+    print("Loading CMOS settings...... OK");
+    await sleep(80);
+
+    print("Checking keyboard.......... OK");
+    await sleep(80);
+
+    print("Checking storage...........");
+    await sleep(160);
+
+    print("Drive 0: " + BIOS.storage);
+    await sleep(100);
+
+    print("Capacity................... 512 GB");
+    await sleep(100);
+
+    print("SMART status............... OK");
+    await sleep(100);
+
+    print("");
+    print("Searching for boot device...");
+    await sleep(200);
+
+    print("Boot device found: " + BIOS.bootDevice, "bright");
+
+    await sleep(180);
+
+    print("");
+    print("Initializing bootloader...");
+    await sleep(180);
+
+    print("BOOTX64.EFI................ FOUND");
+    await sleep(100);
+
+    print("Loading kernel.............");
+    await sleep(200);
+
+    print(BIOS.kernel + " OK", "bright");
+
+    await sleep(120);
+
+    print("");
+    print("Initializing kernel subsystems...");
+
+    await sleep(100);
+    print("[ OK ] Process scheduler");
+
+    await sleep(80);
+    print("[ OK ] Virtual memory");
+
+    await sleep(80);
+    print("[ OK ] Device manager");
+
+    await sleep(80);
+    print("[ OK ] Filesystem manager");
+
+    await sleep(80);
+    print("[ OK ] Input subsystem");
+
+    await sleep(80);
+    print("[ OK ] Terminal subsystem");
+
+    await sleep(120);
+
+    print("");
+    print("Starting system services...");
+
+    await sleep(100);
+    print("[ OK ] systemd");
+
+    await sleep(80);
+    print("[ OK ] logging");
+
+    await sleep(80);
+    print("[ OK ] networking");
+
+    await sleep(80);
+    print("[ OK ] local storage");
+
+    await sleep(120);
+
+    print("");
+    print("System initialization complete.", "boot-complete");
+
+    await sleep(350);
+
+    clearTerminal();
+
+    startTerminal();
+}
+
+
+/* =========================================================
+   TERMINAL START
+========================================================= */
+
+function startTerminal() {
+
+    terminalRunning = true;
+
+    print("TERMINAL v2.7");
+    print(BIOS.kernel, "dim");
+    print("Type 'help' for available commands.");
+    print("");
+
+    if (settings.crt) {
+        document.body.classList.add("crt");
+    }
+
+    if (!userName) {
+        print("Login required.");
+        print("Username:");
+
+        createInputLine("> ", value => {
+
+            userName = value.trim() || "User";
+
+            const returning = Boolean(knownUsers[userName]);
+
+            knownUsers[userName] = true;
+            saveState();
+
+            print("");
+
+            if (returning) {
+                print("Authentication accepted.", "bright");
+                print("Welcome back, " + userName + ".");
+            } else {
+                print("User profile created.", "bright");
+                print("Welcome, " + userName + ".");
+            }
+
+            print("");
+
+            createCommandInput();
+        });
+
+        return;
+    }
+
+    createCommandInput();
+}
+
+
+/* =========================================================
+   INPUT
+========================================================= */
+
+function createInputLine(promptText, callback) {
+
+    const line = document.createElement("div");
+    line.className = "prompt-line";
+
+    const prompt = document.createElement("span");
+    prompt.className = "prompt";
+    prompt.textContent = promptText;
+
+    const input = document.createElement("input");
+
+    input.autocomplete = "off";
+    input.spellcheck = false;
+
+    line.appendChild(prompt);
+    line.appendChild(input);
+
+    terminal.appendChild(line);
+
+    currentInput = input;
+
+    input.focus();
+
+    input.addEventListener("keydown", function(e) {
+
+        if (e.key !== "Enter") {
+            return;
+        }
+
+        e.preventDefault();
+
+        const value = input.value;
+
+        line.remove();
+
+        currentInput = null;
+
+        callback(value);
+    });
+
+    return input;
+}
+
+
+function createCommandInput() {
+
+    if (!terminalRunning || aiActive || currentInput) {
+        return;
+    }
+
+    createInputLine("C:\\> ", value => {
+
+        commandCount++;
+
+        if (value.trim()) {
+            settings.commandHistory.push(value);
+
+            if (settings.commandHistory.length > 100) {
+                settings.commandHistory.shift();
+            }
+
+            saveState();
+        }
+
+        print("C:\\> " + value);
+
+        handleCommand(value.trim());
+    });
+}
+
+
+/* =========================================================
+   COMMANDS
+========================================================= */
+
+function handleCommand(command) {
+
+    if (!command) {
+        createCommandInput();
+        return;
+    }
+
+    const parts = command.split(/\s+/);
+    const base = parts[0].toLowerCase();
+
+    switch (base) {
+
+        case "help":
+            commandHelp();
+            break;
+
+        case "clear":
+        case "cls":
+            clearTerminal();
+            break;
+
+        case "whoami":
+            print(userName);
+            break;
+
+        case "whoareyou":
+            print("Terminal.");
+            print("A local command-line environment.");
+            break;
+
+        case "echo":
+            print(command.substring(5));
+            break;
+
+        case "ver":
+        case "version":
+            print(BIOS.kernel);
+            print(BIOS.version);
+            break;
+
+        case "date":
+            print(new Date().toString());
+            break;
+
+        case "time":
+            print(new Date().toLocaleTimeString());
+            break;
+
+        case "hostname":
+            print("TERMINAL-PC");
+            break;
+
+        case "systeminfo":
+            systemInfo();
+            break;
+
+        case "memory":
+        case "mem":
+            print("Total memory: " + BIOS.memory);
+            print("Memory status: OK");
+            break;
+
+        case "devices":
+            showDevices();
+            break;
+
+        case "history":
+            showHistory();
+            break;
+
+        case "ai":
+            openAI();
+            return;
+
+        case "learn":
+            aiLearn(command);
+            break;
+
+        case "settings":
+            showSettings();
+            break;
+
+        case "crt":
+            toggleCRT(parts[1]);
+            break;
+
+        case "reboot":
+            reboot();
+            return;
+
+        case "shutdown":
+            shutdown();
+            return;
+
+        case "matrix":
+            startMatrix();
+            return;
+
+        case "google":
+            startGoogle();
+            return;
+
+        case "snake":
+            startSnake();
+            return;
+
+        default:
+            print("'" + base + "' is not recognized as a command.");
+            print("Type 'help' for a list of commands.");
+            break;
+    }
+
+    createCommandInput();
+}
+
+
+/* =========================================================
+   HELP
+========================================================= */
+
+function commandHelp() {
+
+    print("");
+    print("TERMINAL COMMAND REFERENCE", "header");
+    print("--------------------------------");
+
+    print("help          Show this command list");
+    print("clear / cls   Clear the terminal");
+    print("whoami        Display current user");
+    print("whoareyou     Display terminal identity");
+    print("hostname      Display computer hostname");
+    print("ver           Display system version");
+    print("date          Display system date");
+    print("time          Display system time");
+    print("systeminfo    Display hardware information");
+    print("memory        Display memory information");
+    print("devices       List detected devices");
+    print("history       Display command history");
+    print("echo <text>   Print text");
+    print("");
+    print("ai            Start local AI session");
+    print("learn         Teach the local AI");
+    print("");
+    print("settings      Display terminal settings");
+    print("crt on/off    Toggle CRT effect");
+    print("");
+    print("snake         Launch Snake");
+    print("google        Launch text search");
+    print("matrix        Launch Matrix mode");
+    print("");
+    print("reboot        Restart the terminal");
+    print("shutdown      Shut down the system");
+    print("");
+}
+
+
+/* =========================================================
+   SYSTEM INFORMATION
+========================================================= */
+
+function systemInfo() {
+
+    print("");
+    print("SYSTEM INFORMATION", "header");
+    print("------------------");
+
+    print("Hostname............. TERMINAL-PC");
+    print("Architecture......... x86_64");
+    print("Processor............ " + BIOS.cpu);
+    print("Cores................ 8");
+    print("Clock................ 3.60 GHz");
+    print("Memory............... " + BIOS.memory);
+    print("Graphics............. " + BIOS.video);
+    print("Storage.............. " + BIOS.storage);
+    print("Storage capacity..... 512 GB");
+    print("Kernel............... " + BIOS.kernel);
+    print("BIOS................. " + BIOS.version);
+    print("Boot device.......... " + BIOS.bootDevice);
+    print("Network.............. ONLINE");
+}
+
+
+/* =========================================================
+   DEVICES
+========================================================= */
+
+function showDevices() {
+
+    print("");
+    print("DEVICE ENUMERATION", "header");
+    print("------------------");
+
+    print("[00] CPU ..................... ONLINE");
+    print("[01] Memory Controller ....... ONLINE");
+    print("[02] PCI Express ............. ONLINE");
+    print("[03] NVMe Storage ............ ONLINE");
+    print("[04] USB Controller .......... ONLINE");
+    print("[05] Audio Device ............ ONLINE");
+    print("[06] Network Adapter ......... ONLINE");
+    print("[07] Display Adapter ......... ONLINE");
+    print("[08] Keyboard ................ ONLINE");
+    print("[09] RTC ..................... ONLINE");
+}
+
+
+/* =========================================================
+   HISTORY
+========================================================= */
+
+function showHistory() {
+
+    if (!settings.commandHistory.length) {
+        print("No command history.");
+        return;
+    }
+
+    print("");
+
+    settings.commandHistory.forEach((cmd, index) => {
+        print(
+            String(index + 1).padStart(3, " ") +
+            "  " +
+            cmd
+        );
+    });
+}
+
+
+/* =========================================================
+   SETTINGS
+========================================================= */
+
+function showSettings() {
+
+    print("");
+    print("TERMINAL SETTINGS", "header");
+    print("-----------------");
+
+    print("CRT effect........... " + (settings.crt ? "ON" : "OFF"));
+    print("AI memory............ ENABLED");
+    print("Command history...... ENABLED");
+    print("");
+    print("Use 'crt on' or 'crt off' to change CRT mode.");
+}
+
+
+function toggleCRT(value) {
+
+    if (value === "on") {
+
+        settings.crt = true;
+        document.body.classList.add("crt");
+
+        print("CRT effect enabled.");
+        saveState();
+
+        return;
+    }
+
+    if (value === "off") {
+
+        settings.crt = false;
+        document.body.classList.remove("crt");
+
+        print("CRT effect disabled.");
+        saveState();
+
+        return;
+    }
+
+    print("Usage: crt on | crt off");
+}
+
+
+/* =========================================================
+   AI
+========================================================= */
+
+const builtInAI = {
+
+    "hello": "Hello.",
+    "hi": "Hi.",
+    "hey": "Hey.",
+    "how are you": "Operating normally.",
+    "who are you": "I am the local Terminal AI.",
+    "what are you": "A small locally running conversational system.",
+    "thanks": "You're welcome.",
+    "thank you": "No problem.",
+    "bye": "Goodbye.",
+    "what can you do":
+        "I can answer basic questions, remember learned phrases, and interact with the terminal.",
+    "help":
+        "Try asking me something, or use 'learn <phrase> = <answer>'."
+};
+
+
+function aiLearn(full) {
+
+    const content = full.replace(/^learn\s+/i, "");
+
+    const separator = content.indexOf("=");
+
+    if (separator === -1) {
+        print("Usage: learn <phrase> = <answer>");
+        return;
+    }
+
+    const phrase =
+        content.substring(0, separator).trim().toLowerCase();
+
+    const answer =
+        content.substring(separator + 1).trim();
+
+    if (!phrase || !answer) {
+        print("Invalid learning data.");
+        return;
+    }
+
+    aiData.knowledge[phrase] = answer;
+
+    saveState();
+
+    print("AI knowledge updated.");
+    print("Phrase: " + phrase);
+}
+
+
+function aiRespond(message) {
+
+    const msg = message.trim().toLowerCase();
+
+    if (!msg) {
+        print("AI: Please enter something.");
+        return;
+    }
+
+    if (
+        msg.includes("your name") ||
+        msg === "name"
+    ) {
+        print("AI: My designation is " + aiData.name + ".");
+        return;
+    }
+
+    if (aiData.knowledge[msg]) {
+        print("AI: " + aiData.knowledge[msg]);
+        return;
+    }
+
+    if (builtInAI[msg]) {
+        print("AI: " + builtInAI[msg]);
+        return;
+    }
+
+    for (const key in aiData.knowledge) {
+
+        if (msg.includes(key)) {
+            print("AI: " + aiData.knowledge[key]);
+            return;
+        }
+    }
+
+    for (const key in builtInAI) {
+
+        if (msg.includes(key)) {
+            print("AI: " + builtInAI[key]);
+            return;
+        }
+    }
+
+    const responses = [
+        "AI: Interesting.",
+        "AI: I understand.",
+        "AI: Tell me more.",
+        "AI: I don't have enough information for that yet.",
+        "AI: I don't have a stored response for that.",
+        "AI: You can teach me with the learn command."
+    ];
+
+    print(
+        responses[
+            Math.floor(Math.random() * responses.length)
+        ]
+    );
+}
+
+
+function openAI() {
+
+    if (aiActive) {
+        return;
+    }
+
+    aiActive = true;
+
+    print("");
+    print("LOCAL AI SESSION", "header");
+    print("-----------------");
+    print("Model: " + aiData.name);
+    print("Memory: ENABLED");
+    print("Type 'exit' to return.");
+    print("");
+
+    createInputLine("AI> ", async message => {
+
+        if (message.trim().toLowerCase() === "exit") {
+
+            aiActive = false;
+
+            print("");
+            print("AI session terminated.");
+            print("");
+
+            createCommandInput();
+
+            return;
+        }
+
+        print("You: " + message);
+
+        await sleep(150);
+
+        aiRespond(message);
+
+        if (aiActive) {
+            createAIInput();
+        }
+    });
+}
+
+
+function createAIInput() {
+
+    if (!aiActive) {
+        return;
+    }
+
+    createInputLine("AI> ", async message => {
+
+        if (message.trim().toLowerCase() === "exit") {
+
+            aiActive = false;
+
+            print("");
+            print("AI session terminated.");
+            print("");
+
+            createCommandInput();
+
+            return;
+        }
+
+        print("You: " + message);
+
+        await sleep(150);
+
+        aiRespond(message);
+
+        if (aiActive) {
+            createAIInput();
+        }
+    });
+}
+
+
+/* =========================================================
+   REBOOT / SHUTDOWN
+========================================================= */
+
+async function reboot() {
+
+    terminalRunning = false;
+    currentInput = null;
+
+    clearTerminal();
+
+    print("REBOOT REQUESTED");
+    print("");
+    print("Stopping services...");
+
+    await sleep(250);
+
+    print("[ OK ] Terminal services stopped.");
+    await sleep(100);
+
+    print("[ OK ] Filesystem synchronized.");
+    await sleep(100);
+
+    print("[ OK ] Devices released.");
+    await sleep(150);
+
+    print("");
+    print("Restarting...");
+    await sleep(500);
+
+    bootSequence();
+}
+
+
+async function shutdown() {
+
+    terminalRunning = false;
+
+    if (currentInput) {
+        currentInput.blur();
+        currentInput = null;
+    }
+
+    clearTerminal();
+
+    print("TERMINAL SYSTEMS", "header");
+    print("");
+    print("Stopping services...");
+
+    await sleep(200);
+
+    print("[ OK ] User sessions");
+    await sleep(100);
+
+    print("[ OK ] Network");
+    await sleep(100);
+
+    print("[ OK ] Storage");
+    await sleep(100);
+
+    print("[ OK ] Terminal");
+    await sleep(200);
+
+    print("");
+    print("Unmounting filesystems...");
+    await sleep(250);
+
+    print("Filesystem unmounted.");
+    await sleep(150);
+
+    print("");
+    print("SYSTEM HALTED", "header");
+    print("");
+    print("It is now safe to close this window.");
+}
+
+
+/* =========================================================
+   SNAKE
+========================================================= */
+
+function startSnake() {
+
+    terminalRunning = false;
+    clearTerminal();
+
+    print("SNAKE");
+    print("Arrow keys to move. Q to exit.");
+    print("");
+
+    const width = 24;
+    const height = 14;
+
+    let snake = [
+        {x: 5, y: 5},
+        {x: 4, y: 5},
+        {x: 3, y: 5}
+    ];
+
+    let direction = {x: 1, y: 0};
+    let food = randomFood();
+    let score = 0;
+    let running = true;
+    let timer = null;
+
+    function randomFood() {
+
+        return {
+            x: Math.floor(Math.random() * (width - 2)) + 1,
+            y: Math.floor(Math.random() * (height - 2)) + 1
+        };
+    }
+
+    function render() {
+
+        clearTerminal();
+
+        print("SNAKE");
+        print("Score: " + score);
+        print("");
+
+        for (let y = 0; y < height; y++) {
+
+            let row = "";
+
+            for (let x = 0; x < width; x++) {
+
+                if (
+                    x === 0 ||
+                    x === width - 1 ||
+                    y === 0 ||
+                    y === height - 1
+                ) {
+                    row += "#";
+                    continue;
+                }
+
+                if (
+                    snake[0].x === x &&
+                    snake[0].y === y
+                ) {
+                    row += "@";
+                    continue;
+                }
+
+                let body = snake
+                    .slice(1)
+                    .some(segment =>
+                        segment.x === x &&
+                        segment.y === y
+                    );
+
+                if (body) {
+                    row += "o";
+                }
+                else if (
+                    food.x === x &&
+                    food.y === y
+                ) {
+                    row += "*";
+                }
+                else {
+                    row += " ";
+                }
+            }
+
+            print(row);
+        }
+
+        print("");
+        print("Q = quit");
+    }
+
+    function update() {
+
+        if (!running) {
+            return;
+        }
+
+        const head = {
+            x: snake[0].x + direction.x,
+            y: snake[0].y + direction.y
+        };
+
+        if (
+            head.x <= 0 ||
+            head.x >= width - 1 ||
+            head.y <= 0 ||
+            head.y >= height - 1
+        ) {
+            endGame();
+            return;
+        }
+
+        if (
+            snake.some(segment =>
+                segment.x === head.x &&
+                segment.y === head.y
+            )
+        ) {
+            endGame();
+            return;
+        }
+
+        snake.unshift(head);
+
+        if (
+            head.x === food.x &&
+            head.y === food.y
+        ) {
+
+            score++;
+            food = randomFood();
+
+        } else {
+
+            snake.pop();
+        }
+
+        render();
+    }
+
+    function endGame() {
+
+        running = false;
+
+        if (timer) {
+            clearInterval(timer);
+            timer = null;
+        }
+
+        print("");
+        print("GAME OVER");
+        print("Final score: " + score);
+        print("Press Q to return.");
+    }
+
+    function keyHandler(e) {
+
+        if (e.key === "ArrowUp" && direction.y === 0) {
+            direction = {x: 0, y: -1};
+        }
+
+        if (e.key === "ArrowDown" && direction.y === 0) {
+            direction = {x: 0, y: 1};
+        }
+
+        if (e.key === "ArrowLeft" && direction.x === 0) {
+            direction = {x: -1, y: 0};
+        }
+
+        if (e.key === "ArrowRight" && direction.x === 0) {
+            direction = {x: 1, y: 0};
+        }
+
+        if (e.key.toLowerCase() === "q") {
+
+            running = false;
+
+            if (timer) {
+                clearInterval(timer);
+                timer = null;
+            }
+
+            document.removeEventListener(
+                "keydown",
+                keyHandler
+            );
+
+            terminalRunning = true;
+
+            clearTerminal();
+
+            createCommandInput();
+        }
+    }
+
+    document.addEventListener(
+        "keydown",
+        keyHandler
+    );
+
+    timer = setInterval(update, 180);
+
+    render();
+}
+
+
+/* =========================================================
+   GOOGLE TEXT MODE
+========================================================= */
+
+function startGoogle() {
+
+    terminalRunning = false;
+
+    clearTerminal();
+
+    print("TEXT SEARCH");
+    print("----------------------------");
+    print("Type a search query.");
+    print("Q = exit");
+    print("");
+
+    createInputLine("Search> ", query => {
+
+        if (query.trim().toLowerCase() === "q") {
+            terminalRunning = true;
+            clearTerminal();
+            createCommandInput();
+            return;
+        }
+
+        print("");
+        print("Searching for: " + query);
+        print("");
+
+        print("[1] " + query + " - official site");
+        print("[2] " + query + " - information");
+        print("[3] " + query + " - reference");
+        print("");
+        print("Press Q to return.");
+
+        function exitSearch(e) {
+
+            if (e.key.toLowerCase() === "q") {
+
+                document.removeEventListener(
+                    "keydown",
+                    exitSearch
+                );
+
+                terminalRunning = true;
+
+                clearTerminal();
+
+                createCommandInput();
+            }
+        }
+
+        document.addEventListener(
+            "keydown",
+            exitSearch
+        );
+    });
+}
+
+
+/* =========================================================
+   MATRIX
+========================================================= */
+
+function startMatrix() {
+
+    terminalRunning = false;
+
+    clearTerminal();
+
+    print("MATRIX MODE");
+    print("Press Q to exit.");
+    print("");
+
+    const canvas = document.createElement("canvas");
+    canvas.className = "matrix";
+
+    document.body.appendChild(canvas);
+
+    const ctx = canvas.getContext("2d");
+
+    let running = true;
+    let animationFrame = null;
+
+    function resize() {
+
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+    }
+
+    resize();
+
+    window.addEventListener("resize", resize);
+
+    const fontSize = 14;
+
+    function draw() {
+
+        if (!running) {
+            return;
+        }
+
+        ctx.fillStyle = "rgba(0,0,0,.08)";
+        ctx.fillRect(
+            0,
+            0,
+            canvas.width,
+            canvas.height
+        );
+
+        ctx.fillStyle = "#00ff66";
+        ctx.font = fontSize + "px monospace";
+
+        const columns =
+            Math.floor(canvas.width / fontSize);
+
+        const now =
+            Math.floor(Date.now() / 100);
+
+        for (let i = 0; i < columns; i++) {
+
+            const character =
+                Math.random() > .5 ? "0" : "1";
+
+            const y =
+                ((now * (i + 3) * 7) %
+                (canvas.height + 500)) - 500;
+
+            ctx.fillText(
+                character,
+                i * fontSize,
+                y
+            );
+        }
+
+        animationFrame =
+            requestAnimationFrame(draw);
+    }
+
+    draw();
+
+    function exitMatrix(e) {
+
+        if (e.key.toLowerCase() !== "q") {
+            return;
+        }
+
+        running = false;
+
+        if (animationFrame !== null) {
+            cancelAnimationFrame(animationFrame);
+            animationFrame = null;
+        }
+
+        window.removeEventListener(
+            "resize",
+            resize
+        );
+
+        document.removeEventListener(
+            "keydown",
+            exitMatrix
+        );
+
+        canvas.remove();
+
+        terminalRunning = true;
+
+        clearTerminal();
+
+        createCommandInput();
+    }
+
+    document.addEventListener(
+        "keydown",
+        exitMatrix
+    );
+}
+
+
+/* =========================================================
+   KEYBOARD SHORTCUTS
+========================================================= */
+
+document.addEventListener("keydown", function(e) {
+
+    if (
+        e.ctrlKey &&
+        e.altKey &&
+        e.key.toLowerCase() === "l"
+    ) {
+        e.preventDefault();
+
+        clearTerminal();
+
+        print("Terminal screen cleared.");
+
+        if (terminalRunning && !aiActive) {
+            createCommandInput();
+        }
+    }
+});
+
+
+/* =========================================================
+   START
+========================================================= */
+
+bootSequence();
+
+</script>
+
+</body>
+</html>
