@@ -982,7 +982,16 @@ html.ios-safari-tip #fullscreen-btn{bottom:calc(86px + env(safe-area-inset-botto
       'cabinets.js is missing or has an error — make sure it sits next to index.html';
     return;
   }
-  CABINETS.forEach(def => {
+  // The Annex is an optional second wing (see ANNEX_OFFSET below) — missing
+  // or broken is fine, the main hall just runs without it.
+  const CABINETS_ANNEX = Array.isArray(window.ARCADE_ANNEX_CABINETS) ? window.ARCADE_ANNEX_CABINETS : [];
+  CABINETS_ANNEX.forEach(def => { def.annex = true; });
+  // Everything that should cover both wings (fallback list, pinBottom
+  // sorting, stats/achievement labels, actually building the machines)
+  // iterates this; anything specifically about the main hall (the floor
+  // map) keeps using CABINETS on its own.
+  const ALL_CABINETS = CABINETS.concat(CABINETS_ANNEX);
+  ALL_CABINETS.forEach(def => {
     const pinned = [];
     for (let i = def.games.length - 1; i >= 0; i--) {
       if (def.games[i].pinBottom) pinned.unshift(def.games.splice(i, 1)[0]);
@@ -1000,7 +1009,7 @@ html.ios-safari-tip #fullscreen-btn{bottom:calc(86px + env(safe-area-inset-botto
 
   // ---- always populate the plain-HTML fallback list, grouped by cabinet ----
   const fallbackList = document.getElementById('fallback-list');
-  CABINETS.forEach(def => {
+  ALL_CABINETS.forEach(def => {
     const group = document.createElement('div');
     group.className = 'fb-group';
     group.style.setProperty('--fb-accent', hexStr(def.accent));
@@ -1457,6 +1466,25 @@ html.ios-safari-tip #fullscreen-btn{bottom:calc(86px + env(safe-area-inset-botto
   const room = new THREE.Mesh(new THREE.BoxGeometry(13, 8.3, 15), wallMat);
   room.position.y = 3.9;
   scene.add(room);
+
+  // =====================================================================
+  // Annex — a second, much bigger hall for the ~300 extra games, reached
+  // through a portal near the entrance. It sits far away in world space
+  // (not hidden/shown — just placed beyond the fog and the camera's far
+  // plane) so the two halls never visually overlap or bleed into each
+  // other; "teleporting" between them is just moving the player/camera.
+  // =====================================================================
+  const ANNEX_OFFSET = { x: 0, z: -260 };
+  const annexFloor = new THREE.Mesh(
+    new THREE.PlaneGeometry(44, 24),
+    new THREE.MeshStandardMaterial({ map: gridTexture, roughness: 0.6, metalness: 0.2 })
+  );
+  annexFloor.rotation.x = -Math.PI / 2;
+  annexFloor.position.set(ANNEX_OFFSET.x, -0.02, ANNEX_OFFSET.z);
+  scene.add(annexFloor);
+  const annexRoom = new THREE.Mesh(new THREE.BoxGeometry(34, 8.3, 16), wallMat);
+  annexRoom.position.set(ANNEX_OFFSET.x, 3.9, ANNEX_OFFSET.z);
+  scene.add(annexRoom);
 
   // Nondescript player — plain head, no face.
   const player = new THREE.Group();
@@ -2368,7 +2396,16 @@ html.ios-safari-tip #fullscreen-btn{bottom:calc(86px + env(safe-area-inset-botto
   // Now that cabinets line three walls, the walkable floor is the open
   // middle of the hall. These bounds keep you about a metre clear of every
   // machine — close enough to trigger it, never clipping into it.
-  const BOUNDS = { minX:-4.2, maxX:4.2, minZ:-4.2, maxZ:6.4 };
+  const MAIN_BOUNDS = { minX:-4.2, maxX:4.2, minZ:-4.2, maxZ:6.4 };
+  // The annex is two long rows of cabinets facing each other across a
+  // central walkway (row A at local z=-4, row B at local z=+4), so its
+  // bounds just need to keep you in that walkway and clear of the end walls.
+  const ANNEX_BOUNDS = {
+    minX: ANNEX_OFFSET.x - 16, maxX: ANNEX_OFFSET.x + 16,
+    minZ: ANNEX_OFFSET.z - 3,  maxZ: ANNEX_OFFSET.z + 3
+  };
+  let inAnnex = false;
+  let BOUNDS = MAIN_BOUNDS;
 
   // =====================================================================
   // Tickets + character customization
@@ -2741,7 +2778,7 @@ html.ios-safari-tip #fullscreen-btn{bottom:calc(86px + env(safe-area-inset-botto
   // working and renaming a game later doesn't wipe anyone's history.
   function gameKey(g){ return g.id || g.title; }
   const GAME_LABELS = {};
-  CABINETS.forEach(c => c.games.forEach(g => { GAME_LABELS[gameKey(g)] = g.title; }));
+  ALL_CABINETS.forEach(c => c.games.forEach(g => { GAME_LABELS[gameKey(g)] = g.title; }));
   function gameLabel(key){ return GAME_LABELS[key] || key; }
   const ALL_GAME_KEYS = Object.keys(GAME_LABELS);
   const ACHIEVEMENTS = [
@@ -3073,7 +3110,10 @@ html.ios-safari-tip #fullscreen-btn{bottom:calc(86px + env(safe-area-inset-botto
   }
 
   function renderFloorMap(){
-    mapSub.textContent = cabinets.length + ' CABINETS \u2022 TAP ONE TO WARP THERE';
+    // the plan below is drawn to the main hall's scale only — the annex is
+    // reached through the portal, not this map
+    const mapCabinets = cabinets.filter(c => !c.def.annex);
+    mapSub.textContent = mapCabinets.length + ' CABINETS \u2022 TAP ONE TO WARP THERE';
 
     let svg = '<svg id="map-plan" viewBox="0 0 228 268" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="floor plan of the arcade">';
     svg += '<rect class="plan-room" x="10" y="10" width="208" height="240" rx="3"/>';
@@ -3087,7 +3127,7 @@ html.ios-safari-tip #fullscreen-btn{bottom:calc(86px + env(safe-area-inset-botto
            '<text class="plan-label plan-prize-label" x="' + planX(PRIZE_POS.x) + '" y="243">PRIZES</text>';
     svg += '<rect class="plan-board" x="' + (planX(3.6) - 16) + '" y="236" width="32" height="8" rx="2"/>' +
            '<text class="plan-label plan-board-label" x="' + planX(3.6) + '" y="243">SCORES</text>';
-    cabinets.forEach((cab, i) => {
+    mapCabinets.forEach((cab, i) => {
       const cx = planX(cab.group.position.x), cz = planZ(cab.group.position.z);
       const deg = -(cab.def.rotY || 0) * 180 / Math.PI; // SVG rotates clockwise, three.js counter-clockwise
       svg += '<g class="plan-cab' + (cab === activeCab ? ' here' : '') + '" data-i="' + i + '" role="button" tabindex="0"' +
@@ -3102,7 +3142,7 @@ html.ios-safari-tip #fullscreen-btn{bottom:calc(86px + env(safe-area-inset-botto
     mapPlanWrap.innerHTML = svg;
 
     mapList.innerHTML = '';
-    cabinets.forEach((cab, i) => {
+    mapCabinets.forEach((cab, i) => {
       const row = document.createElement('div');
       row.className = 'map-row';
       row.setAttribute('role', 'button');
@@ -3122,7 +3162,7 @@ html.ios-safari-tip #fullscreen-btn{bottom:calc(86px + env(safe-area-inset-botto
       mapList.appendChild(row);
     });
     mapPlanWrap.querySelectorAll('.plan-cab').forEach(el => {
-      const cab = cabinets[+el.dataset.i];
+      const cab = mapCabinets[+el.dataset.i];
       el.addEventListener('click', () => warpTo(cab));
       el.addEventListener('keydown', e => {
         if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); warpTo(cab); }
@@ -3135,6 +3175,8 @@ html.ios-safari-tip #fullscreen-btn{bottom:calc(86px + env(safe-area-inset-botto
   function updateMapPlayer(){
     const dot = document.getElementById('plan-player'), ring = document.getElementById('plan-player-ring');
     if (!dot || !ring) return;
+    if (inAnnex) { dot.style.display = ring.style.display = 'none'; return; }
+    dot.style.display = ring.style.display = '';
     let x = player.position.x, z = player.position.z;
     if (activeCab && phase !== PHASE_ROOM) {
       const r = activeCab.def.rotY || 0;
@@ -3842,6 +3884,109 @@ html.ios-safari-tip #fullscreen-btn{bottom:calc(86px + env(safe-area-inset-botto
     };
   })();
 
+  // =====================================================================
+  // Portal — a free-standing arch that teleports you between the main
+  // hall and the annex. One stands in each hall at the same spot in its
+  // own local layout; using either works just like walking up to a
+  // cabinet (get close, then click/tap or press E / Enter).
+  // =====================================================================
+  const PORTAL_COLOR = 0x8a5bff;
+  const PORTAL_NEAR = 2.6;
+  const PORTAL_SWIRL_TEX = makeCanvasTex(256, 256, () => {}); // placeholder, redrawn below per-portal
+  let nearPortal = false;
+
+  const glowTex = makeCanvasTex(128, 128, (g, w, h) => {
+    const v = g.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2);
+    v.addColorStop(0, 'rgba(255,255,255,0.9)'); v.addColorStop(0.5, 'rgba(255,255,255,0.25)'); v.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = v; g.fillRect(0, 0, w, h);
+  });
+
+  function buildPortal(x, z, label){
+    const group = new THREE.Group();
+    group.position.set(x, 0, z);
+    scene.add(group);
+
+    const ringMat = new THREE.MeshStandardMaterial({ color: PORTAL_COLOR, emissive: PORTAL_COLOR, emissiveIntensity: 0.7, roughness: 0.35, metalness: 0.4 });
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(1.05, 0.11, 12, 32), ringMat);
+    ring.position.y = 1.4;
+    group.add(ring);
+
+    const swirlCanvas = document.createElement('canvas');
+    swirlCanvas.width = swirlCanvas.height = 256;
+    const sctx = swirlCanvas.getContext('2d');
+    function drawSwirl(t){
+      sctx.clearRect(0, 0, 256, 256);
+      sctx.save();
+      sctx.translate(128, 128);
+      for (let i = 0; i < 5; i++) {
+        sctx.rotate(0.17 + t * (i % 2 ? 0.02 : -0.02));
+        const r = 34 + i * 18;
+        sctx.strokeStyle = i % 2 ? 'rgba(154,110,255,0.55)' : 'rgba(34,224,255,0.4)';
+        sctx.lineWidth = 9;
+        sctx.beginPath();
+        sctx.arc(0, 0, r, t * (i % 2 ? 1 : -1), t * (i % 2 ? 1 : -1) + 2.4);
+        sctx.stroke();
+      }
+      sctx.restore();
+    }
+    drawSwirl(0);
+    const swirlTex = new THREE.CanvasTexture(swirlCanvas);
+    const swirlMat = new THREE.MeshBasicMaterial({ map: swirlTex, color: 0x241640, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false });
+    const swirl = new THREE.Mesh(new THREE.CircleGeometry(0.95, 32), swirlMat);
+    swirl.position.y = 1.4;
+    group.add(swirl);
+
+    const labelTex = makeCanvasTex(512, 128, (g, w, h) => {
+      g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.shadowColor = '#9a6eff'; g.shadowBlur = 18;
+      g.fillStyle = '#e4d9ff';
+      g.font = "22px 'Press Start 2P', monospace";
+      g.fillText(label, w / 2, h / 2);
+    });
+    const labelMesh = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 0.65), new THREE.MeshBasicMaterial({ map: labelTex, transparent: true, depthWrite: false }));
+    labelMesh.position.set(0, 2.6, 0);
+    group.add(labelMesh);
+
+    const floorGlow = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 3.2), new THREE.MeshBasicMaterial({ map: glowTex, color: PORTAL_COLOR, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false }));
+    floorGlow.rotation.x = -Math.PI / 2;
+    floorGlow.position.y = 0.01;
+    group.add(floorGlow);
+
+    arcadeStrips.push({ material: ringMat, userData: { onI: 0.7 } });
+
+    return { group, drawSwirl, swirlTick: 0 };
+  }
+
+  const portalToAnnex = buildPortal(0, 0.5, 'TO THE ANNEX');
+  const portalToMain = buildPortal(ANNEX_OFFSET.x, ANNEX_OFFSET.z, 'TO MAIN HALL');
+  const PORTAL_TO_ANNEX_POS = new THREE.Vector3(0, 0, 0.5);
+  const PORTAL_TO_MAIN_POS = new THREE.Vector3(ANNEX_OFFSET.x, 0, ANNEX_OFFSET.z);
+  const ANNEX_SPAWN = { x: ANNEX_OFFSET.x, z: ANNEX_OFFSET.z + 1.6 };
+  const MAIN_SPAWN_FROM_ANNEX = { x: 0, z: 2.0 };
+
+  function enterAnnex(){
+    inAnnex = true;
+    BOUNDS = ANNEX_BOUNDS;
+    player.position.set(ANNEX_SPAWN.x, player.position.y, ANNEX_SPAWN.z);
+    AudioEngine.whoosh && AudioEngine.whoosh();
+    showToast('WELCOME TO THE ANNEX', '#8a5bff', 1800);
+    saveSession();
+    buildFloorGuide();
+  }
+  function leaveAnnex(){
+    inAnnex = false;
+    BOUNDS = MAIN_BOUNDS;
+    player.position.set(MAIN_SPAWN_FROM_ANNEX.x, player.position.y, MAIN_SPAWN_FROM_ANNEX.z);
+    AudioEngine.whoosh && AudioEngine.whoosh();
+    showToast('BACK IN THE MAIN HALL', '#8a5bff', 1800);
+    saveSession();
+    buildFloorGuide();
+  }
+  function usePortal(){
+    if (phase !== PHASE_ROOM) return;
+    if (inAnnex) leaveAnnex(); else enterAnnex();
+  }
+
   function tryJump(){
     if (Math.abs(player.position.y-FLOOR_Y)<0.03) { jumpVelocity=JUMP_SPEED; AudioEngine.jump(); }
   }
@@ -3976,6 +4121,7 @@ html.ios-safari-tip #fullscreen-btn{bottom:calc(86px + env(safe-area-inset-botto
         target: {x:controls.target.x, y:controls.target.y, z:controls.target.z},
         preArcadeCamera: preArcadeCameraPos ? {x:preArcadeCameraPos.x, y:preArcadeCameraPos.y, z:preArcadeCameraPos.z} : null,
         preArcadeTarget: preArcadeCameraTarget ? {x:preArcadeCameraTarget.x, y:preArcadeCameraTarget.y, z:preArcadeCameraTarget.z} : null,
+        inAnnex,
         savedAt: Date.now(),
         ...extra
       };
@@ -4024,14 +4170,19 @@ html.ios-safari-tip #fullscreen-btn{bottom:calc(86px + env(safe-area-inset-botto
       roomPrompt.style.display = 'none';
       floorGuide.style.display = 'none';
       nearPrize = false;
+      nearPortal = false;
       return;
     }
     const found = findNearestCabinet();
-    // the prize counter only counts when no cabinet is in range (they're far apart anyway)
-    const prizeNow = !found && Math.hypot(player.position.x - PRIZE_POS.x, player.position.z - PRIZE_POS.z) < PRIZE_NEAR;
-    if (found !== nearCab || prizeNow !== nearPrize) {
+    // the prize counter and the portal only count when no cabinet is in
+    // range (they're all far apart from each other anyway)
+    const prizeNow = !found && !inAnnex && Math.hypot(player.position.x - PRIZE_POS.x, player.position.z - PRIZE_POS.z) < PRIZE_NEAR;
+    const portalPos = inAnnex ? PORTAL_TO_MAIN_POS : PORTAL_TO_ANNEX_POS;
+    const portalNow = !found && !prizeNow && Math.hypot(player.position.x - portalPos.x, player.position.z - portalPos.z) < PORTAL_NEAR;
+    if (found !== nearCab || prizeNow !== nearPrize || portalNow !== nearPortal) {
       nearCab = found;
       nearPrize = prizeNow;
+      nearPortal = portalNow;
       if (nearCab) {
         roomPrompt.style.color = hexStr(nearCab.accent);
         roomPrompt.style.textShadow = '0 0 8px ' + hexStr(nearCab.accent);
@@ -4042,9 +4193,14 @@ html.ios-safari-tip #fullscreen-btn{bottom:calc(86px + env(safe-area-inset-botto
         roomPrompt.style.textShadow = '0 0 8px #ffe600';
         roomPrompt.style.borderColor = mixHex(0xffe600, 0.55);
         roomPrompt.innerHTML = 'PRIZE COUNTER<br><span>' + (isMobile ? 'tap it' : 'click it or press E / ENTER') + ' &bull; spend your tickets</span>';
+      } else if (nearPortal) {
+        roomPrompt.style.color = '#8a5bff';
+        roomPrompt.style.textShadow = '0 0 8px #8a5bff';
+        roomPrompt.style.borderColor = mixHex(0x8a5bff, 0.55);
+        roomPrompt.innerHTML = (inAnnex ? 'RETURN TO THE MAIN HALL' : 'ENTER THE ANNEX') + '<br><span>' + (isMobile ? 'tap it' : 'click it or press E / ENTER') + ' &bull; ' + (inAnnex ? '9' : '~300') + ' more games</span>';
       }
     }
-    if (nearCab || nearPrize) {
+    if (nearCab || nearPrize || nearPortal) {
       powerOnArcade();
       roomPrompt.style.display = 'block';
       floorGuide.style.display = 'none';
@@ -4053,9 +4209,10 @@ html.ios-safari-tip #fullscreen-btn{bottom:calc(86px + env(safe-area-inset-botto
       floorGuide.style.display = 'block';
     }
   }
-  // the standing list of machines, written once rather than every frame
+  // the standing list of machines, written once rather than every frame —
+  // scoped to whichever hall you're currently in
   function buildFloorGuide(){
-    floorGuide.innerHTML = cabinets.map(c =>
+    floorGuide.innerHTML = cabinets.filter(c => !!c.def.annex === inAnnex).map(c =>
       '<span style="color:' + hexStr(c.accent) + '">' + c.title + '</span>'
     ).join(' &nbsp;&bull;&nbsp; ');
   }
@@ -4141,9 +4298,10 @@ html.ios-safari-tip #fullscreen-btn{bottom:calc(86px + env(safe-area-inset-botto
 
   function switchCabinet(dir){
     if (phase !== PHASE_ARCADE || !activeCab || gameOpen || cameraAnimating) return;
-    if (cabinets.length < 2) return;
-    const i = cabinets.indexOf(activeCab);
-    const toCab = cabinets[(i + dir + cabinets.length) % cabinets.length];
+    const zoneCabinets = cabinets.filter(c => !!c.def.annex === !!activeCab.def.annex);
+    if (zoneCabinets.length < 2) return;
+    const i = zoneCabinets.indexOf(activeCab);
+    const toCab = zoneCabinets[(i + dir + zoneCabinets.length) % zoneCabinets.length];
     travelToCabinet(toCab);
   }
 
@@ -4256,16 +4414,17 @@ html.ios-safari-tip #fullscreen-btn{bottom:calc(86px + env(safe-area-inset-botto
   // every frame since it bails out immediately when nothing has changed.
   let cabNavKey = null;
   function updateCabNavButtons(){
-    const show = phase === PHASE_ARCADE && !!activeCab && !gameOpen && !cameraAnimating && cabinets.length > 1;
+    const zoneCabinets = activeCab ? cabinets.filter(c => !!c.def.annex === !!activeCab.def.annex) : cabinets;
+    const show = phase === PHASE_ARCADE && !!activeCab && !gameOpen && !cameraAnimating && zoneCabinets.length > 1;
     const key = show ? activeCab.id : 'hidden';
     if (key === cabNavKey) return;
     cabNavKey = key;
     cabPrevBtn.style.display = show ? 'flex' : 'none';
     cabNextBtn.style.display = show ? 'flex' : 'none';
     if (!show) return;
-    const i = cabinets.indexOf(activeCab);
-    const prev = cabinets[(i - 1 + cabinets.length) % cabinets.length];
-    const next = cabinets[(i + 1) % cabinets.length];
+    const i = zoneCabinets.indexOf(activeCab);
+    const prev = zoneCabinets[(i - 1 + zoneCabinets.length) % zoneCabinets.length];
+    const next = zoneCabinets[(i + 1) % zoneCabinets.length];
     cabPrevLabel.textContent = prev.title;
     cabNextLabel.textContent = next.title;
     cabPrevBtn.style.setProperty('--nav-accent', hexStr(prev.accent));
@@ -4322,6 +4481,9 @@ html.ios-safari-tip #fullscreen-btn{bottom:calc(86px + env(safe-area-inset-botto
       if (hit) cursor = 'pointer';
     } else if (phase === PHASE_ROOM && nearPrize) {
       const hit = raycaster.intersectObject(prizeGroup, true)[0];
+      if (hit) cursor = 'pointer';
+    } else if (phase === PHASE_ROOM && nearPortal) {
+      const hit = raycaster.intersectObject((inAnnex ? portalToMain : portalToAnnex).group, true)[0];
       if (hit) cursor = 'pointer';
     }
 
@@ -4479,6 +4641,9 @@ html.ios-safari-tip #fullscreen-btn{bottom:calc(86px + env(safe-area-inset-botto
     } else if (phase === PHASE_ROOM && nearPrize) {
       setPointerFromEvent(e.clientX, e.clientY);
       if (raycaster.intersectObject(prizeGroup, true)[0]) openPrizeCounter();
+    } else if (phase === PHASE_ROOM && nearPortal) {
+      setPointerFromEvent(e.clientX, e.clientY);
+      if (raycaster.intersectObject((inAnnex ? portalToMain : portalToAnnex).group, true)[0]) usePortal();
     }
   });
   renderer.domElement.addEventListener('pointercancel', e => { releaseJoystick(e); dragStartPos = null; });
@@ -4553,6 +4718,9 @@ html.ios-safari-tip #fullscreen-btn{bottom:calc(86px + env(safe-area-inset-botto
         e.preventDefault();
       } else if ((k === 'Enter' || lower === 'e') && nearPrize) {
         openPrizeCounter();
+        e.preventDefault();
+      } else if ((k === 'Enter' || lower === 'e') && nearPortal) {
+        usePortal();
         e.preventDefault();
       }
       return;
@@ -4944,8 +5112,13 @@ html.ios-safari-tip #fullscreen-btn{bottom:calc(86px + env(safe-area-inset-botto
     updatePlayer(dt);
     controls.update();
     // orbiting can otherwise swing the camera out through a wall, into the void
-    camera.position.x = THREE.MathUtils.clamp(camera.position.x, -6.2, 6.2);
-    camera.position.z = THREE.MathUtils.clamp(camera.position.z, -7.2, 7.2);
+    if (inAnnex) {
+      camera.position.x = THREE.MathUtils.clamp(camera.position.x, ANNEX_OFFSET.x - 18, ANNEX_OFFSET.x + 18);
+      camera.position.z = THREE.MathUtils.clamp(camera.position.z, ANNEX_OFFSET.z - 6, ANNEX_OFFSET.z + 6);
+    } else {
+      camera.position.x = THREE.MathUtils.clamp(camera.position.x, -6.2, 6.2);
+      camera.position.z = THREE.MathUtils.clamp(camera.position.z, -7.2, 7.2);
+    }
     updateMobileControlsVisibility();
 
     const pulse = Math.sin(now * 0.004) * 0.2;
@@ -5072,12 +5245,16 @@ html.ios-safari-tip #fullscreen-btn{bottom:calc(86px + env(safe-area-inset-botto
   }
 
   // build every machine now that all the helpers it needs exist
-  CABINETS.forEach(buildCabinet);
+  ALL_CABINETS.forEach(buildCabinet);
   buildFloorGuide();
 
   function restoreSavedSession(){
     const saved = readSession();
     if (!saved) return false;
+
+    inAnnex = !!saved.inAnnex;
+    BOUNDS = inAnnex ? ANNEX_BOUNDS : MAIN_BOUNDS;
+    buildFloorGuide();
 
     if (saved.selectedByCabinet) {
       cabinets.forEach(c => {
