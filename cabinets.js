@@ -1,185 +1,16 @@
 // =====================================================================
-// CABINETS — the arcade's game library.
+// THE ANNEX — second arcade hall, ~300 extra games. Same engine as the
+// main site (syntax-error-games.github.io/Arcade-Fabinet/); a portal
+// near the entrance links back there.
 //
-// This is the ONLY file you need to edit to add, remove or reorder games.
-// Keep it in the same folder as index.html.
-//
-// Each entry is one physical machine:
-//
-//   id, title, tagline   name shown on the marquee and CRT
-//   accent               its trim / marquee / CRT colour (0xRRGGBB)
-//   x, z                 where it stands on the floor
-//   rotY                 which way it faces (0 = toward you, Math.PI/2 = toward +x)
-//   where                label used on the floor map
-//   games                the list of games on that machine
-//
-// Each game is   { title: "Pac-Man", file: "games/pac-man/index.html" }
-// plus optional flags:
-//   pinBottom: true   always sorts to the end of its own cabinet (e.g. Credits)
-//   external:  true   opens in a new tab (for sites that refuse to be framed)
-//   id: "pac-man"     a stable key for stats / tickets / achievements. Defaults
-//                     to the title; set it before you ever rename a game so
-//                     players keep their history.
-//
-// To add a game: drop one line into the `games` list you want.
-// To add a whole new genre: copy a cabinet block, give it a fresh id, title,
-// accent and a free x/z spot on the floor.
+// Curated from UBGHyper/GameList.github.io (~700 folders) with heavy
+// sequel/duplicate trimming and Flash games removed. Add more the same
+// way you'd add to any cabinet list — just drop another block in.
 // =====================================================================
 window.ARCADE_CABINETS = [
     {
-      id:'arcade', title:'ARCADE', tagline:'PIXEL PERFECT CLASSICS',
-      accent:0xffe600, x:-4.6, z:-5.2, rotY:0, where:'BACK WALL',
-      games:[
-        { title: "Asteroids", file: "games/asteroids/index.html" },
-        { title: "Breakout", file: "games/breakout/index.html" },
-        { title: "Centipede", file: "games/centipede/index.html" },
-        { title: "Computer Space", file: "games/computer-space/index.html" },
-        { title: "Defender", file: "games/defender/index.html" },
-        { title: "Galaxian", file: "games/galaxian/index.html" },
-        { title: "Gun Fight", file: "games/gun-fight/index.html" },
-        { title: "Lunar Lander", file: "games/lunar-lander/index.html" },
-        { title: "Missile Command", file: "games/missile-command/index.html" },
-        { title: "Pac-Man", file: "games/pac-man/index.html" },
-        { title: "Pong", file: "games/pong/index.html" },
-        { title: "Space Invaders", file: "games/space-invaders/index.html" }
-      ]
-    },
-    {
-      id:'action', title:'ACTION', tagline:'RUN AND GUN',
-      accent:0xff5a1f, x:-2.3, z:-5.2, rotY:0, where:'BACK WALL',
-      games:[
-        { title: "Ultrakill", file: "https://ubghyper.github.io/GameList.github.io/Ultrakill/" },
-        { title: "Recoil", file: "https://ubghyper.github.io/GameList.github.io/Recoil/" },
-        { title: "Nightfall", file: "games/nightfall-fps.html" },
-        { title: "Jetpack Joyride", file: "https://emulatoros.github.io/gfile/jetpackjoyride/" },
-        { title: "Neon Chamber", file: "games/NeonChamber.html" },
-        { title: "Doodle Shooter", file: "https://dbestvarun.github.io/doodle-game/" },
-        { title: "Shooter Game", file: "games/ShooterGame.html" },
-        { title: "Tomb of the Mask", file: "https://ubghyper.github.io/GameList.github.io/Tomb-of-the-Mask/" },
-        { title: "Stickman Hook", file: "https://ubghyper.github.io/GameList.github.io/Stickman-Hook/" }
-      ]
-    },
-    {
-      id:'racing', title:'RACING', tagline:'WHEELS AND SPEED',
-      accent:0xff2bd6, x:0, z:-5.2, rotY:0, where:'BACK WALL',
-      games:[
-        { title: "Mario Kart",        file: "https://ubghyper.github.io/GameList.github.io/MarioKart/" },
-        { title: "Turbo Kart",        file: "https://bridge-mind.github.io/turbo-kart-rush/" },
-        { title: "Car Soccer",        file: "https://car-soccer.com/" },
-        { title: "Rocket Arena",        file: "games/rocket-arena-3v3.html" },
-        { title: "Apex Formula",        file: "https://bridge-mind.github.io/apex-formula/" },
-        { title: "Polytrack",         file: "https://ubghyper.github.io/GameList.github.io/Polytrack-New/" },
-        { title: "Drive Mad",         file: "https://anonymousbirb5100.github.io/drive-mad/" },
-        { title: "Drift Boss",        file: "https://ubghyper.github.io/GameList.github.io/Drift-Boss/" },
-        { title: "MotoX3M",           file: "https://ubghyper.github.io/GameList.github.io/Moto3XM/" },
-        { title: "Jelly Drift",       file: "https://ubghyper.github.io/GameList.github.io/Jelly-Drift/" },
-      ]
-    },
-    {
-      id:'adventure', title:'ADVENTURE', tagline:'JUMP AND EXPLORE',
-      accent:0x39ff14, x:2.3, z:-5.2, rotY:0, where:'BACK WALL',
-      games:[
-        { title: "Hollow Knight", file: "https://ubghyper.github.io/GameList.github.io/hollowknight/" },
-        { title: "Deepest Sword", file: "https://mathv2official.github.io/projects/deepestsword/index.html" },
-        { title: "Pokemon Clone", file: "https://syntax-error-games.github.io/2026Q1_Fakemon/" },
-        { title: "Level Devil", file: "https://ubghyper.github.io/GameList.github.io/Level-Devil/" },
-        { title: "Platformer", file: "games/Platformer.html" },
-        { title: "Roller", file: "https://iherrick-mps.github.io/Simple-Roller-Game/" },
-        { title: "Crossy Farm", file: "games/crossy-farm-car/index.html" },
-        { title: "Flappy Bird", file: "games/flappy-bird/index.html" },
-        { title: "Mario 1-1", file: "games/mario-1-1/index.html" },
-        { title: "Subway Surfers New York", file: "ubg42.github.io/SubwaySurfersNewYork/" },
-        { title: "Meccha Chameleon", file: "ubg42.github.io/MecchaChameleonOnline/" },
-        { title: "Subway Runner", file: "games/subway-runner/index.html" }
-      ]
-    },
-    {
-      id:'sandbox', title:'SANDBOX', tagline:'BUILD ANYTHING',
-      accent:0x22e0ff, x:4.6, z:-5.2, rotY:0, where:'BACK WALL',
-      games:[
-        { title: "Minecraft", file: "https://ubghyper.github.io/GameList.github.io/Eaglercraft/" },
-        { title: "Jelly Mario", file: "https://ubghyper.github.io/GameList.github.io/Jelly-Mario/" },
-        { title: "Voxelcraft", file: "games/voxelcraft.html" },
-        { title: "Terraria", file: "https://ubghyper.github.io/GameList.github.io/Terraria/" },
-        { title: "Sandvoxels", file: "https://freeonlinewebtools.github.io/UnblockedGamesUltra.github.io/" },
-        { title: "Townscaper", file: "https://ubghyper.github.io/GameList.github.io/Townscaper/" },
-        { title: "Gravity Simulator", file: "games/GravitySim.html" },
-        { title: "Terraria Sandbox", file: "games/terraria-sandbox/index.html" },
-        { title: "Voxel GTA City", file: "games/voxel-gta-city/index.html" },
-        { title: "GTA6 Leonida City", file: "games/GTA6-Leonida.html" }
-      ]
-    },
-    // The next four machines continue the loop around the room's perimeter —
-    // right wall back-to-front, then a single hop across the open front of
-    // the room, then left wall front-to-back — rather than jumping corner to
-    // corner. Cycling with the nav buttons / arrow keys / joystick swipe
-    // follows this exact array order.
-    {
-      id:'toybox', title:'TOY BOX', tagline:'ODDS AND ENDS',
-      accent:0xb060e0, x:5.3, z:-2.4, rotY:-Math.PI/2, where:'RIGHT WALL',
-      games:[
-        { title: "About Blank Link Cloaker", file: "games/AboutBlank.html" },
-        { title: "Cookie Clicker", file: "https://ozh.github.io/cookieclicker/" },
-        { title: "Clicker Game", file: "games/ClickerGame.html" },
-        { title: "Name Generator", file: "games/NameGenerator.html" },
-        { title: "Die Roller", file: "games/DiceRoller.html" },
-        { title: "Robot Tennis", file: "games/robot-tennis/index.html" }
-      ]
-    },
-    {
-      id:'portals', title:'PORTALS', tagline:'LINKS OUT',
-      accent:0x00e5a0, x:5.3, z:0.2, rotY:-Math.PI/2, where:'RIGHT WALL',
-      games:[
-        { title: "Seraph", file: "https://crimsondev1.github.io/seraph/games/index.html" },
-        { title: "Math V2", file: "https://mathv2official.github.io/projects.html" },
-        { title: "UGBhyper", file: "https://ubghyper.github.io/index.html" },
-        { title: "Quenq", file: "https://quenq.com", external: true },
-        { title: "Jadson's Site", file: "https://sites.google.com/stu.sandi.net/vip/home?pli=1&authuser=5", external: true },
-        { title: "Credits", file: "games/Credits.html" }
-      ]
-    },
-    {
-      id:'creative', title:'CREATIVE', tagline:'MAKE SOMETHING',
-      accent:0xffe600, x:-5.3, z:0.2, rotY:Math.PI/2, where:'LEFT WALL',
-      games:[
-        { title: "MS Paint", file: "games/Paint.html" },
-        { title: "Piano", file: "games/Piano.html" },
-        { title: "Synth", file: "games/synth-keyboard.html" },
-        { title: "Music Player", file: "games/MusicPlayer.html" },
-        { title: "Windows 95", file: "games/Win95.html" },
-        { title: "SmallPages", file: "https://9-7-8.github.io/SmallPages/index.html" },
-        { title: "LED Matrix", file: "games/LEDmatrix.html" },
-        { title: "Live Transit Map", file: "games/transitmap.html" },
-        { title: "Cyber Terminal", file: "games/cyberterminal.html" },
-        { title: "Terminal", file: "games/Terminal.html" }
-      ]
-    },
-    {
-      id:'horror', title:'HORROR', tagline:'LIGHTS OUT',
-      accent:0xff1744, x:-5.3, z:-2.4, rotY:Math.PI/2, where:'LEFT WALL',
-      games:[
-        { title: "Buckshot Roulette", file: "https://ubghyper.github.io/GameList.github.io/Buckshot-Roulete/" },
-        { title: "MiSide", file: "https://ubghyper.github.io/GameList.github.io/Unity-Web-Player-MiSide/" },
-        { title: "Pinehollow Funland", file: "games/pinehollow-funland-standalone.html" },
-        { title: "R.E.P.O.", file: "https://ubghyper.github.io/GameList.github.io/Repo/" },
-        { title: "Five Nights at Epst", file: "https://ubghyper.github.io/GameList.github.io/FNAE/" }
-      ]
-    },
-  ];
-// =====================================================================
-// ANNEX — a separate wing of ~300 extra games, reached through the
-// glowing portal near the entrance. These machines live far from the
-// main hall in world space (see ANNEX_OFFSET in index.html) so the two
-// areas never overlap or render into each other.
-//
-// Curated from UBGHyper/GameList.github.io (~700 folders) with heavy
-// sequel/duplicate trimming — add more the same way you'd add to the
-// main ARCADE_CABINETS list above.
-// =====================================================================
-window.ARCADE_ANNEX_CABINETS = [
-    {
       id:'annex-racing-1', title:'FAST LANE', tagline:'FOOT DOWN',
-      accent:0xff2bd6, x:-14.95, z:-264, rotY:0, where:'ANNEX', annex:true,
+      accent:0xff2bd6, x:-11.5, z:-14.2, rotY:0, where:'BACK WALL',
       games:[
         { title: "3D Car Simulator", file: "https://ubghyper.github.io/GameList.github.io/3D-Car-Simulator/index.html", id: "annex-3d-car-simulator" },
         { title: "Adventure Drivers", file: "https://ubghyper.github.io/GameList.github.io/Adventure-Drivers/index.html", id: "annex-adventure-drivers" },
@@ -197,7 +28,7 @@ window.ARCADE_ANNEX_CABINETS = [
     },
     {
       id:'annex-racing-2', title:'FAST LANE II', tagline:'FOOT DOWN',
-      accent:0xff2bd6, x:-12.65, z:-264, rotY:0, where:'ANNEX', annex:true,
+      accent:0xff2bd6, x:-9.2, z:-14.2, rotY:0, where:'BACK WALL',
       games:[
         { title: "Line Rider 2", file: "https://ubghyper.github.io/GameList.github.io/Line-Rider-2/index.html", id: "annex-line-rider-2" },
         { title: "Madalin Stunt Cars 2", file: "https://ubghyper.github.io/GameList.github.io/Madalin-Stunt-Cars-2/index.html", id: "annex-madalin-stunt-cars-2" },
@@ -215,7 +46,7 @@ window.ARCADE_ANNEX_CABINETS = [
     },
     {
       id:'annex-shooters-1', title:'FIREFIGHT', tagline:'LOCK AND LOAD',
-      accent:0xff5a1f, x:-10.35, z:-264, rotY:0, where:'ANNEX', annex:true,
+      accent:0xff5a1f, x:-6.9, z:-14.2, rotY:0, where:'BACK WALL',
       games:[
         { title: "Age Of War", file: "https://ubghyper.github.io/GameList.github.io/Age-Of-War/index.html", id: "annex-age-of-war" },
         { title: "Blade Ball", file: "https://ubghyper.github.io/GameList.github.io/Blade-Ball/index.html", id: "annex-blade-ball" },
@@ -233,7 +64,7 @@ window.ARCADE_ANNEX_CABINETS = [
     },
     {
       id:'annex-sim_sandbox-1', title:'WORKSHOP', tagline:'BUILD IT YOUR WAY',
-      accent:0xb060e0, x:-8.05, z:-264, rotY:0, where:'ANNEX', annex:true,
+      accent:0xb060e0, x:-4.6, z:-14.2, rotY:0, where:'BACK WALL',
       games:[
         { title: "Andys Apple Farm", file: "https://ubghyper.github.io/GameList.github.io/Andys-Apple-Farm/index.html", id: "annex-andys-apple-farm" },
         { title: "Bad Time Simulator Sans Fight", file: "https://ubghyper.github.io/GameList.github.io/Bad-Time-Simulator-Sans-Fight/index.html", id: "annex-bad-time-simulator-sans-fight" },
@@ -251,7 +82,7 @@ window.ARCADE_ANNEX_CABINETS = [
     },
     {
       id:'annex-horror-1', title:'HORROR ANNEX', tagline:'STILL AFRAID?',
-      accent:0xff1744, x:-5.75, z:-264, rotY:0, where:'ANNEX', annex:true,
+      accent:0xff1744, x:-2.3, z:-14.2, rotY:0, where:'BACK WALL',
       games:[
         { title: "Backrooms", file: "https://ubghyper.github.io/GameList.github.io/Backrooms/index.html", id: "annex-backrooms" },
         { title: "Fear And Hunger", file: "https://ubghyper.github.io/GameList.github.io/Fear-and-Hunger/index.html", id: "annex-fear-and-hunger" },
@@ -269,7 +100,7 @@ window.ARCADE_ANNEX_CABINETS = [
     },
     {
       id:'annex-retro_flash-1', title:'FLASHBACK', tagline:'OLD SCHOOL',
-      accent:0xffe600, x:-3.45, z:-264, rotY:0, where:'ANNEX', annex:true,
+      accent:0xffe600, x:0, z:-14.2, rotY:0, where:'BACK WALL',
       games:[
         { title: "Baldis Basics Classic Remastered", file: "https://ubghyper.github.io/GameList.github.io/Baldis-Basics-Classic-Remastered/index.html", id: "annex-baldis-basics-classic-remastered" },
         { title: "Hobo 1", file: "https://ubghyper.github.io/GameList.github.io/Hobo-1/index.html", id: "annex-hobo-1" },
@@ -287,7 +118,7 @@ window.ARCADE_ANNEX_CABINETS = [
     },
     {
       id:'annex-puzzle_idle-1', title:'BRAIN BOX', tagline:'THINK FAST',
-      accent:0x22e0ff, x:-1.15, z:-264, rotY:0, where:'ANNEX', annex:true,
+      accent:0x22e0ff, x:2.3, z:-14.2, rotY:0, where:'BACK WALL',
       games:[
         { title: "Bejeweled", file: "https://ubghyper.github.io/GameList.github.io/Bejeweled/index.html", id: "annex-bejeweled" },
         { title: "Big Tower Tiny Square 2", file: "https://ubghyper.github.io/GameList.github.io/Big-Tower-Tiny-Square-2/index.html", id: "annex-big-tower-tiny-square-2" },
@@ -305,7 +136,7 @@ window.ARCADE_ANNEX_CABINETS = [
     },
     {
       id:'annex-platformers-1', title:'JUMP ZONE', tagline:'ONE MORE TRY',
-      accent:0x39ff14, x:1.15, z:-264, rotY:0, where:'ANNEX', annex:true,
+      accent:0x39ff14, x:4.6, z:-14.2, rotY:0, where:'BACK WALL',
       games:[
         { title: "Bottle Jump 3D", file: "https://ubghyper.github.io/GameList.github.io/Bottle-Jump-3D/index.html", id: "annex-bottle-jump-3d" },
         { title: "Bridd Jump", file: "https://ubghyper.github.io/GameList.github.io/Bridd-Jump/index.html", id: "annex-bridd-jump" },
@@ -323,7 +154,7 @@ window.ARCADE_ANNEX_CABINETS = [
     },
     {
       id:'annex-platformers-2', title:'JUMP ZONE II', tagline:'ONE MORE TRY',
-      accent:0x39ff14, x:3.45, z:-264, rotY:0, where:'ANNEX', annex:true,
+      accent:0x39ff14, x:6.9, z:-14.2, rotY:0, where:'BACK WALL',
       games:[
         { title: "Run", file: "https://ubghyper.github.io/GameList.github.io/Run/index.html", id: "annex-run" },
         { title: "RunRich", file: "https://ubghyper.github.io/GameList.github.io/RunRich/index.html", id: "annex-runrich" },
@@ -341,7 +172,7 @@ window.ARCADE_ANNEX_CABINETS = [
     },
     {
       id:'annex-overflow-1', title:'SIDE QUEST', tagline:'OPTIONAL BUT FUN',
-      accent:0xff6b9d, x:5.75, z:-264, rotY:0, where:'ANNEX', annex:true,
+      accent:0xff6b9d, x:9.2, z:-14.2, rotY:0, where:'BACK WALL',
       games:[
         { title: "3D Bowling", file: "https://ubghyper.github.io/GameList.github.io/3D-Bowling/index.html", id: "annex-3d-bowling" },
         { title: "Baseball Bros", file: "https://ubghyper.github.io/GameList.github.io/BASEBALL-BROS/index.html", id: "annex-baseball-bros" },
@@ -359,7 +190,7 @@ window.ARCADE_ANNEX_CABINETS = [
     },
     {
       id:'annex-overflow-2', title:'BONUS ROUND', tagline:'FOR EXTRA CREDIT',
-      accent:0xffd166, x:8.05, z:-264, rotY:0, where:'ANNEX', annex:true,
+      accent:0xffd166, x:11.5, z:-14.2, rotY:0, where:'BACK WALL',
       games:[
         { title: "Vex 3", file: "https://ubghyper.github.io/GameList.github.io/Vex-3/index.html", id: "annex-vex-3" },
         { title: "Vex 3 Xmas", file: "https://ubghyper.github.io/GameList.github.io/Vex-3-Xmas/index.html", id: "annex-vex-3-xmas" },
@@ -377,7 +208,7 @@ window.ARCADE_ANNEX_CABINETS = [
     },
     {
       id:'annex-overflow-3', title:'EXTRA LIFE', tagline:'ONE UP',
-      accent:0x06d6a0, x:10.35, z:-264, rotY:0, where:'ANNEX', annex:true,
+      accent:0x06d6a0, x:-12.3, z:-11.4, rotY:Math.PI/2, where:'LEFT WALL',
       games:[
         { title: "Fancy Pants Adventures", file: "https://ubghyper.github.io/GameList.github.io/Fancy-Pants-Adventures/index.html", id: "annex-fancy-pants-adventures" },
         { title: "PokemonRed", file: "https://ubghyper.github.io/GameList.github.io/PokemonRed/index.html", id: "annex-pokemonred" },
@@ -395,7 +226,7 @@ window.ARCADE_ANNEX_CABINETS = [
     },
     {
       id:'annex-overflow-4', title:'CONTINUE?', tagline:'INSERT COIN',
-      accent:0xef476f, x:12.65, z:-264, rotY:0, where:'ANNEX', annex:true,
+      accent:0xef476f, x:-12.3, z:-9.1, rotY:Math.PI/2, where:'LEFT WALL',
       games:[
         { title: "People Playground", file: "https://ubghyper.github.io/GameList.github.io/People-Playground/index.html", id: "annex-people-playground" },
         { title: "Sandboxels", file: "https://ubghyper.github.io/GameList.github.io/Sandboxels/index.html", id: "annex-sandboxels" },
@@ -413,7 +244,7 @@ window.ARCADE_ANNEX_CABINETS = [
     },
     {
       id:'annex-overflow-5', title:'HIGH SCORE', tagline:'CHASE THE TOP SPOT',
-      accent:0xffe066, x:14.95, z:-264, rotY:0, where:'ANNEX', annex:true,
+      accent:0xffe066, x:-12.3, z:-6.8, rotY:Math.PI/2, where:'LEFT WALL',
       games:[
         { title: "Nubbys Number Factory", file: "https://ubghyper.github.io/GameList.github.io/Nubbys-Number-Factory/index.html", id: "annex-nubbys-number-factory" },
         { title: "Pizza Tower", file: "https://ubghyper.github.io/GameList.github.io/Pizza-Tower/index.html", id: "annex-pizza-tower" },
@@ -431,7 +262,7 @@ window.ARCADE_ANNEX_CABINETS = [
     },
     {
       id:'annex-overflow-6', title:'FREE PLAY', tagline:'NO COINS NEEDED',
-      accent:0x118ab2, x:-13.8, z:-256, rotY:Math.PI, where:'ANNEX', annex:true,
+      accent:0x118ab2, x:-12.3, z:-4.5, rotY:Math.PI/2, where:'LEFT WALL',
       games:[
         { title: "A Dance Of Fire And Ice", file: "https://ubghyper.github.io/GameList.github.io/A-Dance-of-Fire-and-Ice/index.html", id: "annex-a-dance-of-fire-and-ice" },
         { title: "A Game About Feeding A Black Hole", file: "https://ubghyper.github.io/GameList.github.io/A-Game-About-Feeding-A-Black-Hole/index.html", id: "annex-a-game-about-feeding-a-black-hole" },
@@ -449,7 +280,7 @@ window.ARCADE_ANNEX_CABINETS = [
     },
     {
       id:'annex-overflow-7', title:'TOKEN ALLEY', tagline:'SPEND THEM HERE',
-      accent:0xc77dff, x:-11.5, z:-256, rotY:Math.PI, where:'ANNEX', annex:true,
+      accent:0xc77dff, x:-12.3, z:-2.2, rotY:Math.PI/2, where:'LEFT WALL',
       games:[
         { title: "Bartender The Right Mix", file: "https://ubghyper.github.io/GameList.github.io/Bartender-The-Right-Mix/index.html", id: "annex-bartender-the-right-mix" },
         { title: "Bendy", file: "https://ubghyper.github.io/GameList.github.io/Bendy/index.html", id: "annex-bendy" },
@@ -467,7 +298,7 @@ window.ARCADE_ANNEX_CABINETS = [
     },
     {
       id:'annex-overflow-8', title:'QUARTER BIN', tagline:'DEEP CUTS',
-      accent:0x8d99ae, x:-9.2, z:-256, rotY:Math.PI, where:'ANNEX', annex:true,
+      accent:0x8d99ae, x:-12.3, z:0.1, rotY:Math.PI/2, where:'LEFT WALL',
       games:[
         { title: "Breaking The Bank", file: "https://ubghyper.github.io/GameList.github.io/Breaking-The-Bank/index.html", id: "annex-breaking-the-bank" },
         { title: "BreakLock", file: "https://ubghyper.github.io/GameList.github.io/BreakLock/index.html", id: "annex-breaklock" },
@@ -485,7 +316,7 @@ window.ARCADE_ANNEX_CABINETS = [
     },
     {
       id:'annex-overflow-9', title:'BACK ROOM', tagline:'STAFF FOUND THESE',
-      accent:0x7209b7, x:-6.9, z:-256, rotY:Math.PI, where:'ANNEX', annex:true,
+      accent:0x7209b7, x:-12.3, z:2.4, rotY:Math.PI/2, where:'LEFT WALL',
       games:[
         { title: "Count Masters", file: "https://ubghyper.github.io/GameList.github.io/Count-Masters/index.html", id: "annex-count-masters" },
         { title: "Crash Bandicoot", file: "https://ubghyper.github.io/GameList.github.io/Crash-Bandicoot/index.html", id: "annex-crash-bandicoot" },
@@ -503,7 +334,7 @@ window.ARCADE_ANNEX_CABINETS = [
     },
     {
       id:'annex-overflow-10', title:'STORAGE CLOSET', tagline:'DUSTY BUT GOOD',
-      accent:0x9d8189, x:-4.6, z:-256, rotY:Math.PI, where:'ANNEX', annex:true,
+      accent:0x9d8189, x:-12.3, z:4.7, rotY:Math.PI/2, where:'LEFT WALL',
       games:[
         { title: "Dig To China", file: "https://ubghyper.github.io/GameList.github.io/Dig-To-China/index.html", id: "annex-dig-to-china" },
         { title: "Dogeminer", file: "https://ubghyper.github.io/GameList.github.io/Dogeminer/index.html", id: "annex-dogeminer" },
@@ -521,7 +352,7 @@ window.ARCADE_ANNEX_CABINETS = [
     },
     {
       id:'annex-overflow-11', title:'LOST LEVEL', tagline:'OFF THE MAP',
-      accent:0x3a86ff, x:-2.3, z:-256, rotY:Math.PI, where:'ANNEX', annex:true,
+      accent:0x3a86ff, x:12.3, z:-11.4, rotY:-Math.PI/2, where:'RIGHT WALL',
       games:[
         { title: "Fleeing The Complex", file: "https://ubghyper.github.io/GameList.github.io/Fleeing-The-Complex/index.html", id: "annex-fleeing-the-complex" },
         { title: "Fnf Cyber Sensation Friday Night Funkin", file: "https://ubghyper.github.io/GameList.github.io/FNF-Cyber-Sensation-Friday-Night-Funkin/index.html", id: "annex-fnf-cyber-sensation-friday-night-funkin" },
@@ -539,7 +370,7 @@ window.ARCADE_ANNEX_CABINETS = [
     },
     {
       id:'annex-overflow-12', title:'SECRET ROOM', tagline:'SHH',
-      accent:0xfb5607, x:0, z:-256, rotY:Math.PI, where:'ANNEX', annex:true,
+      accent:0xfb5607, x:12.3, z:-9.1, rotY:-Math.PI/2, where:'RIGHT WALL',
       games:[
         { title: "Google Feud", file: "https://ubghyper.github.io/GameList.github.io/Google-Feud/index.html", id: "annex-google-feud" },
         { title: "Happy Fishing", file: "https://ubghyper.github.io/GameList.github.io/Happy-Fishing/index.html", id: "annex-happy-fishing" },
@@ -557,7 +388,7 @@ window.ARCADE_ANNEX_CABINETS = [
     },
     {
       id:'annex-overflow-13', title:'DEMO KIOSK', tagline:'TRY BEFORE YOU BUY',
-      accent:0xffbe0b, x:2.3, z:-256, rotY:Math.PI, where:'ANNEX', annex:true,
+      accent:0xffbe0b, x:12.3, z:-6.8, rotY:-Math.PI/2, where:'RIGHT WALL',
       games:[
         { title: "Iron Snout", file: "https://ubghyper.github.io/GameList.github.io/Iron-Snout/index.html", id: "annex-iron-snout" },
         { title: "Jelly Truck", file: "https://ubghyper.github.io/GameList.github.io/Jelly-Truck/index.html", id: "annex-jelly-truck" },
@@ -575,7 +406,7 @@ window.ARCADE_ANNEX_CABINETS = [
     },
     {
       id:'annex-overflow-14', title:'OVERFLOW', tagline:'RAN OUT OF WALLS',
-      accent:0x8338ec, x:4.6, z:-256, rotY:Math.PI, where:'ANNEX', annex:true,
+      accent:0x8338ec, x:12.3, z:-4.5, rotY:-Math.PI/2, where:'RIGHT WALL',
       games:[
         { title: "Milkman Karlson", file: "https://ubghyper.github.io/GameList.github.io/Milkman-Karlson/index.html", id: "annex-milkman-karlson" },
         { title: "Mini Metro", file: "https://ubghyper.github.io/GameList.github.io/Mini-Metro/index.html", id: "annex-mini-metro" },
@@ -593,7 +424,7 @@ window.ARCADE_ANNEX_CABINETS = [
     },
     {
       id:'annex-overflow-15', title:'ANNEX WING', tagline:'NEWEST ADDITION',
-      accent:0x00bbf9, x:6.9, z:-256, rotY:Math.PI, where:'ANNEX', annex:true,
+      accent:0x00bbf9, x:12.3, z:-2.2, rotY:-Math.PI/2, where:'RIGHT WALL',
       games:[
         { title: "Picos School", file: "https://ubghyper.github.io/GameList.github.io/Picos-school/index.html", id: "annex-picos-school" },
         { title: "Picos School 2", file: "https://ubghyper.github.io/GameList.github.io/Picos-school-2/index.html", id: "annex-picos-school-2" },
@@ -611,7 +442,7 @@ window.ARCADE_ANNEX_CABINETS = [
     },
     {
       id:'annex-overflow-16', title:'REWIND', tagline:'PRESS PLAY AGAIN',
-      accent:0xf15bb5, x:9.2, z:-256, rotY:Math.PI, where:'ANNEX', annex:true,
+      accent:0xf15bb5, x:12.3, z:0.1, rotY:-Math.PI/2, where:'RIGHT WALL',
       games:[
         { title: "Sandspiel", file: "https://ubghyper.github.io/GameList.github.io/sandspiel/index.html", id: "annex-sandspiel" },
         { title: "Serenitrove", file: "https://ubghyper.github.io/GameList.github.io/Serenitrove/index.html", id: "annex-serenitrove" },
@@ -629,7 +460,7 @@ window.ARCADE_ANNEX_CABINETS = [
     },
     {
       id:'annex-overflow-17', title:'NEW ARRIVALS', tagline:'FRESH OFF THE TRUCK',
-      accent:0x00f5d4, x:11.5, z:-256, rotY:Math.PI, where:'ANNEX', annex:true,
+      accent:0x00f5d4, x:12.3, z:2.4, rotY:-Math.PI/2, where:'RIGHT WALL',
       games:[
         { title: "Station Saturn", file: "https://ubghyper.github.io/GameList.github.io/Station-Saturn/index.html", id: "annex-station-saturn" },
         { title: "Stick Empires", file: "https://ubghyper.github.io/GameList.github.io/Stick-Empires/index.html", id: "annex-stick-empires" },
@@ -647,7 +478,7 @@ window.ARCADE_ANNEX_CABINETS = [
     },
     {
       id:'annex-overflow-18', title:'CLEARANCE', tagline:'EVERYTHING MUST GO',
-      accent:0xffafcc, x:13.8, z:-256, rotY:Math.PI, where:'ANNEX', annex:true,
+      accent:0xffafcc, x:12.3, z:4.7, rotY:-Math.PI/2, where:'RIGHT WALL',
       games:[
         { title: "Tiny Fishing", file: "https://ubghyper.github.io/GameList.github.io/Tiny-Fishing/index.html", id: "annex-tiny-fishing" },
         { title: "Tiny Fishing 1", file: "https://ubghyper.github.io/GameList.github.io/Tiny-Fishing-1/index.html", id: "annex-tiny-fishing-1" },
